@@ -1,0 +1,268 @@
+{
+  "c1": {
+    "profile": "normal",
+    "stages": [
+      "security",
+      "reliability",
+      "reserve",
+      "imbalance",
+      "cost",
+      "re_utilisation",
+      "bess_flex",
+      "tie_break"
+    ],
+    "feasibility": "ok",
+    "costK": 33035,
+    "unservedMWh": 0,
+    "curtailMWh": 0,
+    "drMWh": 0,
+    "thermalMWh": 3735
+  },
+  "c2": {
+    "profile": "renewable_surplus",
+    "stages": [
+      "security",
+      "reliability",
+      "re_utilisation",
+      "cost",
+      "bess_flex",
+      "reserve",
+      "imbalance",
+      "tie_break"
+    ],
+    "feasibility": "ok",
+    "costK": 21803,
+    "unservedMWh": 0,
+    "curtailMWh": 1353,
+    "drMWh": 0,
+    "thermalMWh": 3138
+  },
+  "c3": {
+    "profile": "evening_ramp+price_spike",
+    "stages": [
+      "security",
+      "reliability",
+      "reserve",
+      "imbalance",
+      "cost",
+      "bess_flex",
+      "re_utilisation",
+      "tie_break"
+    ],
+    "feasibility": "ok",
+    "costK": 33025,
+    "unservedMWh": 0,
+    "curtailMWh": 0,
+    "drMWh": 0,
+    "thermalMWh": 6339
+  },
+  "c3ref": {
+    "profile": "evening_ramp",
+    "stages": [
+      "security",
+      "reliability",
+      "reserve",
+      "cost",
+      "imbalance",
+      "bess_flex",
+      "re_utilisation",
+      "tie_break"
+    ],
+    "feasibility": "ok",
+    "costK": 38782,
+    "unservedMWh": 0,
+    "curtailMWh": 0,
+    "drMWh": 0,
+    "thermalMWh": 5800
+  },
+  "c4": {
+    "profile": "evening_ramp+bess_outage_or_low_soc",
+    "stages": [
+      "security",
+      "reliability",
+      "reserve",
+      "imbalance",
+      "cost",
+      "bess_flex",
+      "re_utilisation",
+      "tie_break"
+    ],
+    "feasibility": "ok",
+    "costK": 34721,
+    "unservedMWh": 0,
+    "curtailMWh": 0,
+    "drMWh": 0,
+    "thermalMWh": 4715
+  },
+  "c4ref": {
+    "profile": "evening_ramp",
+    "stages": [
+      "security",
+      "reliability",
+      "reserve",
+      "cost",
+      "imbalance",
+      "bess_flex",
+      "re_utilisation",
+      "tie_break"
+    ],
+    "feasibility": "ok",
+    "costK": 32673,
+    "unservedMWh": 0,
+    "curtailMWh": 0,
+    "drMWh": 0,
+    "thermalMWh": 4700
+  },
+  "c5": {
+    "profile": "evening_ramp+demand_spike+thermal_unit_failure",
+    "stages": [
+      "security",
+      "reliability",
+      "reserve",
+      "imbalance",
+      "cost",
+      "bess_flex",
+      "re_utilisation",
+      "tie_break"
+    ],
+    "feasibility": "ok",
+    "costK": 37397,
+    "unservedMWh": 0,
+    "curtailMWh": 0,
+    "drMWh": 94,
+    "thermalMWh": 3284
+  },
+  "cLadder": {
+    "profile": "evening_ramp+demand_spike+thermal_unit_failure",
+    "stages": [
+      "security",
+      "reliability",
+      "reserve",
+      "imbalance",
+      "cost",
+      "bess_flex",
+      "re_utilisation",
+      "tie_break"
+    ],
+    "feasibility": "shortfall",
+    "costK": 42479,
+    "unservedMWh": 3182.5,
+    "curtailMWh": 0,
+    "drMWh": 648,
+    "thermalMWh": 3286
+  },
+  "c5mild": {
+    "profile": "evening_ramp+demand_spike+thermal_unit_failure",
+    "stages": [
+      "security",
+      "reliability",
+      "reserve",
+      "imbalance",
+      "cost",
+      "bess_flex",
+      "re_utilisation",
+      "tie_break"
+    ],
+    "feasibility": "ok",
+    "costK": 35494,
+    "unservedMWh": 0,
+    "curtailMWh": 0,
+    "drMWh": 0,
+    "thermalMWh": 3281
+  },
+  "c6": {
+    "profile": "transmission_constraint",
+    "stages": [
+      "security",
+      "reliability",
+      "reserve",
+      "cost",
+      "imbalance",
+      "re_utilisation",
+      "bess_flex",
+      "tie_break"
+    ],
+    "feasibility": "ok",
+    "costK": 17028,
+    "unservedMWh": 0,
+    "curtailMWh": 1068,
+    "drMWh": 0,
+    "thermalMWh": 2043
+  },
+  "c7": {
+    "profile": "renewable_forecast_error",
+    "stages": [
+      "security",
+      "reliability",
+      "reserve",
+      "imbalance",
+      "cost",
+      "re_utilisation",
+      "bess_flex",
+      "tie_break"
+    ],
+    "feasibility": "ok",
+    "costK": 33036,
+    "unservedMWh": 0,
+    "curtailMWh": 0,
+    "drMWh": 0,
+    "thermalMWh": 3510
+  },
+  "c8": {
+    "profile": "evening_ramp+thermal_unit_failure",
+    "stages": [
+      "security",
+      "reliability",
+      "reserve",
+      "imbalance",
+      "cost",
+      "bess_flex",
+      "re_utilisation",
+      "tie_break"
+    ],
+    "feasibility": "ok",
+    "costK": 35406,
+    "unservedMWh": 0,
+    "curtailMWh": 0,
+    "drMWh": 0,
+    "thermalMWh": 2368
+  },
+  "c9": {
+    "profile": "frequency_deterioration+evening_ramp+bess_outage_or_low_soc",
+    "stages": [
+      "security",
+      "reliability",
+      "reserve",
+      "imbalance",
+      "cost",
+      "bess_flex",
+      "re_utilisation",
+      "tie_break"
+    ],
+    "feasibility": "ok",
+    "costK": 39280,
+    "unservedMWh": 0,
+    "curtailMWh": 0,
+    "drMWh": 0,
+    "thermalMWh": 6166
+  },
+  "c10": {
+    "profile": "evening_ramp+thermal_unit_failure",
+    "stages": [
+      "security",
+      "reliability",
+      "reserve",
+      "cost",
+      "imbalance",
+      "bess_flex",
+      "re_utilisation",
+      "tie_break"
+    ],
+    "feasibility": "shortfall",
+    "costK": 26444,
+    "unservedMWh": 3032.9,
+    "curtailMWh": 0,
+    "drMWh": 887,
+    "thermalMWh": 1336
+  }
+}

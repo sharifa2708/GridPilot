@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "_readme": "Editable optimisation policy. Objectives are ranked per operating situation (profile); the optimiser works through them in order (lexicographic stages). Thresholds, hysteresis, action permissions and tolerances are all here. Restart the server after editing, or set POLICY_CONFIG to another file.",
+
+  "objectives": {
+    "security": "Grid security and frequency response",
+    "reliability": "Reliability and critical-load protection",
+    "reserve": "Reserve adequacy",
+    "imbalance": "DSM / imbalance exposure",
+    "cost": "Delivered electricity cost",
+    "re_utilisation": "Renewable utilisation",
+    "bess_flex": "BESS flexibility and lifetime"
+  },
+
+  "profiles": {
+    "normal": { "label": "Normal operations", "objectives": ["reliability", "reserve", "imbalance", "cost", "re_utilisation", "bess_flex"] },
+    "frequency_deterioration": { "label": "Frequency deterioration / grid instability", "objectives": ["security", "reliability", "reserve", "imbalance", "cost"] },
+    "renewable_surplus": { "label": "Renewable surplus", "objectives": ["security", "reliability", "re_utilisation", "cost", "bess_flex"] },
+    "evening_ramp": { "label": "Evening demand ramp", "objectives": ["reliability", "reserve", "cost", "imbalance", "bess_flex"] },
+    "price_spike": { "label": "Market price spike", "objectives": ["reliability", "reserve", "imbalance", "cost", "bess_flex"] },
+    "bess_outage_or_low_soc": { "label": "BESS outage or low SOC", "objectives": ["reliability", "reserve", "imbalance", "cost", "bess_flex"] },
+    "transmission_constraint": { "label": "Transmission constraint", "objectives": ["security", "reliability", "reserve", "cost"] },
+    "demand_spike": { "label": "Unexpected demand spike", "objectives": ["reliability", "reserve", "imbalance", "cost"] },
+    "renewable_forecast_error": { "label": "Renewable forecast error", "objectives": ["reliability", "reserve", "imbalance", "cost"] },
+    "thermal_unit_failure": { "label": "Thermal unit failure", "objectives": ["reliability", "reserve", "imbalance", "cost"] }
+  },
+
+  "events": {
+    "frequency_deterioration": {
+      "profile": "frequency_deterioration", "weight": 1.0, "persistBlocks": 1, "holdBlocks": 2, "enter": 0.1, "exit": 0.07,
+      "unit": "Hz away from 50", "scale": 0.2, "windowBlocks": 4,
+      "reserveUpMultiplierLow": 1.6, "reserveDownMultiplierHigh": 1.6, "blockPurchasesWhenHigh": true,
+      "restrictMerchantSales": true, "enablesDemandResponse": true, "enablesLoadShift": false, "prepositionBessPct": 0
+    },
+    "renewable_surplus": {
+      "profile": "renewable_surplus", "weight": 0.8, "persistBlocks": 2, "holdBlocks": 3, "enter": 50, "exit": 20,
+      "unit": "MW of energy that demand, storage and export cannot absorb", "scale": 300, "windowBlocks": 12,
+      "restrictMerchantSales": false, "enablesDemandResponse": false, "enablesLoadShift": true, "prepositionBessPct": 0
+    },
+    "evening_ramp": {
+      "profile": "evening_ramp", "weight": 0.9, "persistBlocks": 2, "holdBlocks": 3, "enter": 250, "exit": 180,
+      "unit": "MW rise in net load over two hours", "scale": 600, "windowBlocks": 12, "rampLookBlocks": 8,
+      "restrictMerchantSales": false, "enablesDemandResponse": false, "enablesLoadShift": false, "prepositionBessPct": 0.1
+    },
+    "price_spike": {
+      "profile": "price_spike", "weight": 0.9, "persistBlocks": 2, "holdBlocks": 3, "enter": 9, "exit": 7.5,
+      "unit": "forecast peak price, ₹/kWh", "scale": 5, "windowBlocks": 12,
+      "restrictMerchantSales": false, "enablesDemandResponse": true, "enablesLoadShift": true, "prepositionBessPct": 0.1
+    },
+    "bess_outage_or_low_soc": {
+      "profile": "bess_outage_or_low_soc", "weight": 0.9, "persistBlocks": 1, "holdBlocks": 3, "enter": 0.3, "exit": 0.15,
+      "unit": "share of battery flexibility lost", "scale": 1, "windowBlocks": 12, "lowSocPct": 30,
+      "restrictMerchantSales": true, "enablesDemandResponse": true, "enablesLoadShift": false, "prepositionBessPct": 0
+    },
+    "transmission_constraint": {
+      "profile": "transmission_constraint", "weight": 1.0, "persistBlocks": 1, "holdBlocks": 2, "enter": 0.01, "exit": 0.0,
+      "unit": "share of corridor transfer limit lost, or overload", "scale": 0.5, "windowBlocks": 12,
+      "restrictMerchantSales": true, "enablesDemandResponse": false, "enablesLoadShift": false, "prepositionBessPct": 0
+    },
+    "demand_spike": {
+      "profile": "demand_spike", "weight": 1.0, "persistBlocks": 1, "holdBlocks": 3, "enter": 0.05, "exit": 0.03,
+      "unit": "demand above forecast, share", "scale": 0.15, "windowBlocks": 8,
+      "restrictMerchantSales": true, "enablesDemandResponse": true, "enablesLoadShift": false, "prepositionBessPct": 0
+    },
+    "renewable_forecast_error": {
+      "profile": "renewable_forecast_error", "weight": 0.7, "persistBlocks": 2, "holdBlocks": 3, "enter": 0.2, "exit": 0.12,
+      "unit": "solar forecast error, share (wind error is divided by 2.5: wind forecasts are naturally less accurate)", "scale": 0.5, "windowBlocks": 8, "windFactor": 2.5,
+      "restrictMerchantSales": false, "enablesDemandResponse": false, "enablesLoadShift": false, "prepositionBessPct": 0
+    },
+    "thermal_unit_failure": {
+      "profile": "thermal_unit_failure", "weight": 1.0, "persistBlocks": 1, "holdBlocks": 0, "enter": 0.05, "exit": 0.0,
+      "unit": "lost thermal capacity, share of demand", "scale": 0.3, "windowBlocks": 12,
+      "restrictMerchantSales": true, "enablesDemandResponse": true, "enablesLoadShift": false, "prepositionBessPct": 0.1
+    }
+  },
+
+  "combine": {
+    "normalWeight": 0.25,
+    "interactions": [
+      { "events": ["evening_ramp", "bess_outage_or_low_soc"], "boost": 1.3, "note": "The evening ramp coincides with reduced battery flexibility: upward reserve and ramping must come from thermal units and imports." },
+      { "events": ["price_spike", "thermal_unit_failure"], "boost": 1.3, "note": "A price spike during a thermal outage makes replacement energy expensive and scarce: reserve and reliability come before cost." },
+      { "events": ["renewable_forecast_error", "evening_ramp"], "boost": 1.2, "note": "A forecast miss ahead of the ramp reduces certainty of the net-load rise: keep reserve and correct the schedule early." },
+      { "events": ["transmission_constraint", "renewable_surplus"], "boost": 1.3, "note": "Local renewable surplus cannot be evacuated: absorb it locally (battery, flexible load) before curtailing." },
+      { "events": ["demand_spike", "thermal_unit_failure"], "boost": 1.4, "note": "Higher demand with less generation: highest risk of load shedding." }
+    ]
+  },
+
+  "reserve": { "baseUpDemandShare": 0.03, "baseDownSigmaShare": 0.7, "stormSigmaMultiplier": 1.5 },
+
+  "stages": {
+    "totalSolveSec": { "intraday": 6, "dam": 12 },
+    "stageMinSec": 0.6,
+    "costStageShare": 0.45,
+    "mipGap": { "security": 0.0, "reliability": 0.0, "reserve": 0.02, "imbalance": 0.02, "cost": 0.003, "re": 0.02, "bess": 0.05, "tie": 0.05 },
+    "tolerance": {
+      "security": { "rel": 0, "abs": 0.01 },
+      "reliability": { "rel": 0, "abs": 0.01 },
+      "reserve": { "rel": 0.02, "abs": 0.05 },
+      "imbalance": { "rel": 0.02, "abs": 0.05 },
+      "cost": { "rel": 0.002, "abs": 1 },
+      "re": { "rel": 0.01, "abs": 0.05 },
+      "bess": { "rel": 0.02, "abs": 0.05 },
+      "tie": { "rel": 0.05, "abs": 1 }
+    },
+    "criticalLoadWeight": 10,
+    "skipStagesAtLowerBound": true
+  },
+
+  "actions": {
+    "demandResponse": { "enabled": true, "requiresActiveEvent": true, "useOnlyWhenNeeded": true, "disruptionRsPerKwh": 2.0, "noticeBlocks": 0, "excludeCritical": true },
+    "loadShift": { "enabled": true, "requiresActiveEvent": true, "useOnlyWhenNeeded": true, "shiftOutRsPerKwh": 1.5, "shiftInRsPerKwh": 0.1, "noticeBlocks": 0 },
+    "bessExclusive": "binary",
+    "emergencyProcurement": { "enabled": true, "mode": "advisory" },
+    "autoExecute": { "bess": true, "thermal": true, "market": true, "renewables": true, "demandResponse": "supervised", "maintenance": "approval" }
+  },
+
+  "evaluation": { "windowBlocks": 12, "conservativeRenewableFactor": 0.85, "conservativeDemandFactor": 1.05, "alternativesWhenNonNormal": true }
+}

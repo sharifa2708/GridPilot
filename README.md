@@ -21,8 +21,8 @@ Built for the **ET AI Hackathon · Problem 4**. Runs entirely on your machine or
 (live weather and national data; the app falls back to a synthetic model without it).
 
 ```bash
-git clone https://github.com/YOUR-USER/YOUR-REPO.git
-cd YOUR-REPO
+git clone https://github.com/sharifa2708/GridPilot.git
+cd GridPilot
 npm install
 npm run build        # builds the web UI into client/dist
 npm start            # serves UI + API on http://localhost:8787
@@ -61,7 +61,7 @@ Fly.io, a VM). It **cannot run as Vercel serverless functions**; Vercel can only
 1. **Push the project to GitHub** (a private repository is fine). `.gitignore` already excludes `.env`, `data/` and `node_modules/`, so no key or
    saved state is committed.
    ```bash
-   git remote add origin https://github.com/YOUR-USER/YOUR-REPO.git
+   git remote add origin https://github.com/sharifa2708/GridPilot.git
    git branch -M main
    git push -u origin main
    ```

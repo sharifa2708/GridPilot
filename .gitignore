@@ -3,5 +3,5 @@
 !.env.example
 node_modules/
 client/dist/
-data/
+/data/
 *.log

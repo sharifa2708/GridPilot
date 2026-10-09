@@ -34,6 +34,8 @@ let snap: NationalSnapshot = {
 export const getNational = () => snap;
 
 const UA = { 'User-Agent': 'Mozilla/5.0 (GridPilot research prototype)' };
+/** The real reason of a failed request: Node's generic "fetch failed" hides it in err.cause (DNS, refused, reset, timeout, certificate). */
+const why = (e: any) => { const c = e?.cause; return c ? `${e?.message ?? e} (${c.code ?? c.name ?? ''} ${c.message ?? ''})`.replace(/s+/g, ' ').trim() : String(e?.message ?? e); };
 const num = (s: string | undefined) => {
   if (!s) return null;
   const v = Number(s.replace(/[,\s]/g, ''));
@@ -65,7 +67,7 @@ export async function refreshNational(): Promise<NationalSnapshot> {
     next.renewableMW = grab('RENEWABLE GENERATION');
     ok = next.demandMetMW != null;
   } catch (e: any) {
-    errs.push('MeritIndia: ' + (e?.message ?? e));
+    errs.push('MeritIndia: ' + why(e));
   }
   try {
     const j = JSON.parse(await post('https://vidyutpravah.in/PXDashboard/BindTopStatisticsFromJS'));
@@ -84,7 +86,7 @@ export async function refreshNational(): Promise<NationalSnapshot> {
       }
     }
   } catch (e: any) {
-    errs.push('VidyutPravah: ' + (e?.message ?? e));
+    errs.push('VidyutPravah: ' + why(e));
   }
   next.source = ok ? 'live' : 'unavailable';
   next.error = errs.length ? errs.join('; ') : null;

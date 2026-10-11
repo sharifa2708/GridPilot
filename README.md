@@ -7,81 +7,59 @@ real-world disturbances (a unit trip, a cloud burst, a demand surge) and watch t
 
 Built for the **ET AI Hackathon · Problem 4**. Runs entirely on your machine or on a single small server; no database is needed.
 
-> **Contents** — [Quick start](#quick-start) · [Deploy to Railway](#deploy-to-railway) · [Configuration](#configuration) ·
-> [What you see](#what-you-see) · [How the agent works](#how-the-agent-works) · [Shortage handling](#shortage-handling-the-ladder) ·
+> **Contents** — [Try the app](#try-the-app) · [Configuration](#configuration) ·
+> [What you see](#what-you-see) · [How the agent works](#how-the-agent-works) · [Logic in detail](#logic-in-detail) · [Shortage handling](#shortage-handling-the-ladder) ·
 > [Scenario Lab](#scenario-lab) · [Market, DSM and uploads](#market-dsm-and-uploads) · [Optimisation policy](#optimisation-policy-and-action-selection) ·
 > [Ask the Agent](#ask-the-agent) · [Data sources](#data-sources) · [Architecture](#architecture) · [API](#api-reference) ·
 > [Testing](#testing) · [Known limitations](#known-limitations) · [Troubleshooting](#troubleshooting) · [Security](#security-notes)
 
 ---
 
-## Quick start
+## Try the app
 
-**Prerequisites:** [Node.js](https://nodejs.org) 22 or newer (developed on Node 24) and Git. Internet access is optional but recommended
-(live weather and national data; the app falls back to a synthetic model without it).
+There are two ways to try GridPilot. Pick whichever suits you.
+
+### A. Hosted demo on Railway
+
+1. Open **https://gridpilot-production-2fe6.up.railway.app**.
+2. The first load can show a "starting" screen for up to about a minute while the engine replays the day. Wait for it.
+3. Start on the **Control Room**. Watch the dispatch chart, the **Demand · Generation** card and the **agent panel** (Actions · Criteria · Reasoning · Log).
+4. Open **Scenario Lab**, inject a disturbance (for example *Thermal unit trip* or *Cloud burst*), then return to the Control Room and watch the alerts, the
+   customer table and the agent's actions change. Switch the header toggle from **Live** to **Simulate** (and pick a speed) so a block passes every 5, 8 or 15 seconds instead of every 15 minutes.
+5. Open **DAM / RTM Planning** to optimise a schedule, stress-test it and compare it with a baseline.
+
+> **Caveat: price and weather data on the hosted demo might not be live.**
+> * **Market prices** (DAM / RTM) are a calibrated IEX *shape* plus modelled forecast error, unless real IEX day-ahead files are uploaded on the **Data Sources** page.
+> * **MeritIndia** (all-India demand and generation) and **Vidyut Pravah** (frequency, IEX UMCP) are Indian government / exchange sites that often **refuse
+>   connections from servers outside India**. The hosted demo runs on cloud servers abroad, so these two feeds usually show "unreachable" and the app
+>   falls back to its modelled values. They work from an Indian network, which is why running locally (option B) from India gives live national data.
+> * **Weather** comes from the free Open-Meteo service. If it is rate-limited or unreachable the app uses a synthetic weather model instead.
+> * The **Data Sources** page labels every feed as *LIVE*, *MODEL*, *UPLOAD* or *CONFIG*, so you can always see what is real and what is modelled.
+>
+> Decisions, costs and explanations are internally consistent either way; only the realism of the inputs changes.
+
+The hosted demo has no login and a single shared simulation. If someone else is using it, you will see their scenarios and settings.
+Use **Settings → Reset** to start a clean day.
+
+### B. Run it from the GitHub repository
+
+The repository is **https://github.com/sharifa2708/GridPilot** (currently private; you need to be added as a collaborator, or ask the owner to make it public).
 
 ```bash
 git clone https://github.com/sharifa2708/GridPilot.git
 cd GridPilot
-npm install
+npm install          # needs Node.js 22 or newer
 npm run build        # builds the web UI into client/dist
-npm start            # serves UI + API on http://localhost:8787
+npm start            # UI + API on http://localhost:8787
 ```
 
-Open **http://localhost:8787**. The first start takes up to about a minute while the engine replays the day; a "starting" screen shows
-meanwhile. Later starts are fast because the state is saved to `data/state.json`.
+Then open **http://localhost:8787** and follow the same steps as in A. Two optional extras:
 
-**Development mode** (hot reload for server and UI):
+* **Live data:** nothing to configure. Open-Meteo, MeritIndia and Vidyut Pravah are fetched automatically when reachable. From India you normally get all three.
+* **Claude answers in Ask the Agent:** copy `.env.example` to `.env` and put your own Anthropic key after `ANTHROPIC_API_KEY=`, then restart. Never commit `.env`.
 
-```bash
-npm run dev          # API on :8787, UI on http://localhost:5173
-```
-
-**Optional — Claude for free-form questions.** Copy `.env.example` to `.env` and put your own Anthropic API key after
-`ANTHROPIC_API_KEY=`. Without a key the *Ask the Agent* box still answers common questions from the live data. See [Ask the Agent](#ask-the-agent).
-
-| Command | What it does |
-|---|---|
-| `npm install` | Install dependencies |
-| `npm run dev` | Server (watch mode) + Vite dev server |
-| `npm run build` | Build the UI to `client/dist` |
-| `npm start` | Run the server (also serves the built UI) |
-| `npm run typecheck` | TypeScript check of server and client |
-| `npm test` | Policy / optimiser acceptance tests (17 tests, about 30–45 s) |
-| `npm run test:update` | Rewrite `server/test/golden.json` after a deliberate change |
-
----
-
-## Deploy to Railway
-
-GridPilot is one long-running Node process: it keeps the simulation in memory, ticks every second, streams live updates (Server-Sent Events),
-runs the optimiser in worker threads and writes `data/state.json`. It therefore needs a host that keeps a process running (Railway, Render,
-Fly.io, a VM). It **cannot run as Vercel serverless functions**; Vercel can only serve the built UI as static files.
-
-1. **Push the project to GitHub** (a private repository is fine). `.gitignore` already excludes `.env`, `data/` and `node_modules/`, so no key or
-   saved state is committed.
-   ```bash
-   git remote add origin https://github.com/sharifa2708/GridPilot.git
-   git branch -M main
-   git push -u origin main
-   ```
-2. **Create the service.** In [Railway](https://railway.app): *New Project → Deploy from GitHub repo* and pick the repository.
-3. **Build and start commands** (Railway detects Node from `package.json`; set them explicitly if it does not):
-   - Build: `npm ci && npm run build`
-   - Start: `npm start`
-   - Make sure the Node version is 22 or newer (add the variable `NODE_VERSION=24` if needed).
-4. **Variables** (*Variables* tab): add `ANTHROPIC_API_KEY` (optional, for Ask the Agent). Do **not** set `PORT`; Railway provides it and the server reads it.
-5. **Health check** (*Settings → Deploy*): path `/api/boot`. The service reports `running` once the engine has started.
-6. **Persist the state** (optional): add a **Volume** mounted at `/app/data`. Without it every redeploy starts a fresh day, which is fine for a demo.
-7. **Size and replicas:** about 1 GB of memory and 1–2 vCPU; the optimiser is CPU-heavy in Simulate mode. Keep **one replica**: the state lives in the
-   process, so two instances would not share it.
-8. **Public URL:** *Settings → Networking → Generate Domain*. Open it; the first boot takes up to about 75 s.
-
-**Hosting the UI on Vercel (optional).** Add a `vercel.json` that serves `client/dist` and rewrites `/api/*` to your Railway URL. Long-lived
-streams through a rewrite can be cut off; if live updates stall, point the UI directly at the Railway address instead (needs an API-base setting
-and CORS on the server). Running everything on Railway avoids this.
-
-> Before sharing the URL publicly, read [Security notes](#security-notes): the app has no login.
+For development with hot reload use `npm run dev` and open http://localhost:5173 (port 8787 serves the last *built* UI, so run `npm run build` again after UI changes
+if you use that port).
 
 ---
 
@@ -121,17 +99,18 @@ peaker 150 MW), 2 batteries (200 MW / 800 MWh), and 9 customers (about 1,240 MW 
 ### Reading the Demand · Generation card
 
 ```
-853 MW   27 deficit        ← demand, then the gap
-Own gen 675
-Grid 177   Buy 0   Sell 0
-Δsched +27.4
+858 MW   balanced          ← demand, then the gap
+Own gen 547
+Grid 13   Buy 298   Sell 0     ← Grid in red: 13 MW drawn beyond the schedule
+Δsched +13.0
 ```
 
-* The big number is the **customers' demand**. Beside it is the gap = *demand − own generation − grid − buy + sell*: positive is a **deficit**
-  (red), negative a **surplus** (green), within 5 MW "balanced". Battery charging is not counted.
+* The big number is the **customers' demand**. Beside it is the gap = *demand − own generation − grid (including over-drawal) − buy + sell*: positive is a
+  **deficit** (red), negative a **surplus** (green), within 5 MW "balanced". Battery charging is not counted.
 * **Grid** is the contract import. When the block is drawing more from the grid than scheduled, the over-drawal is added and the figure turns red.
 * **Δsched** is actual minus scheduled net drawal. Positive = over-drawal (supplied by the grid, settled as a DSM deviation charge), negative = under-drawal.
-  Over-drawal is **not** unserved load.
+* **Over-drawal and extra purchases are supply, not a deficit.** A deficit appears only when demand is genuinely **not served** (a demand-response cut or a
+  disruption). The three numbers shown (own generation + grid + buy − sell) therefore add up to the demand.
 
 ---
 
@@ -155,6 +134,119 @@ ACT      real-time balancing, DSM settlement, cost accounting
   is lost at once, and the plant follows its schedule. A planned battery charge stops if the block is short. Over-drawal is settled as a deviation.
 * **From the next block** the agent changes what is economic: start or stop units, move the battery, buy or sell on the exchange, draw contract power, or cut load.
 * The **Actions** panel lists everything the next block's plan does **differently from the committed schedule** (a difference of 1 MW or more).
+
+---
+
+## Logic in detail
+
+This section explains, step by step, how GridPilot turns data into a dispatch decision and why. File names point to where each piece lives.
+
+### 1. The two worlds: truth and forecast (`twin.ts`)
+
+GridPilot keeps a **digital twin** of the DISCOM with two views of the same day:
+
+* **Truth**: what physically happens. Weather-driven solar and wind output, customer demand, asset availability, scenario events (a trip, a cloud burst).
+* **The agent's view**: what the planner is allowed to know. Forecasts of solar, wind and demand, forecast prices, and the asset status it has been told about.
+  Anything injected as a surprise is **invisible to the agent until it has happened**; it only sees it through the next observation.
+
+The gap between the two is the forecast error, and it is what makes the problem hard. Solar and wind come from weather data
+(irradiance → MW through performance ratio, DC/AC clipping and a temperature derate; 100 m wind → power curve with cut-in, rated and cut-out speeds),
+plus correlated noise and a day-level bias. After each block the engine compares actual with forecast and stores a **persistence ratio** per
+plant and for demand. Later forecast blocks are scaled by it, so the agent learns that "the sun is running 8 % below forecast today".
+
+### 2. The loop that runs every block (`engine.ts`)
+
+A block is 15 minutes (96 per day). In **Live** mode the clock is the real IST clock; in **Simulate** mode a block lasts 5, 8 or 15 seconds.
+
+```
+1  EXECUTE   run the current block against the truth (physics.ts): what really happened, what it cost, what the DSM charge is
+2  OBSERVE   update the persistence ratios, state of charge, unit status, price observations, alerts
+3  ASSESS    detect the operating situation (policy/situation.ts) and choose the priority profile
+4  PLAN      solve the 96-block MILP for the remaining horizon with that profile (opt/, worker thread)
+5  SELECT    compare the new plan with what is already committed; list the differences as actions (policy/candidates.ts, evaluate.ts)
+6  EXPLAIN   attach reasons, alternatives, shadow prices and the audit record (agent.ts, policy/audit.ts)
+7  PUBLISH   push the new state to every browser over SSE; telemetry streams every second in between
+```
+
+A re-plan is also started immediately when something changes outside the clock: a scenario is added or cleared, a maintenance file is uploaded, a schedule
+is committed, or a setting changes. Planning never blocks the clock: it runs in worker threads, and the previous plan keeps governing the system until a newer
+one lands.
+
+### 3. Detecting the situation (`policy/situation.ts`)
+
+Nine kinds of event are detected from data, not from labels: **frequency deterioration, renewable surplus, evening ramp, price spike, battery outage or low
+charge, transmission constraint, demand spike, forecast error, thermal unit failure.** Each detection carries a **severity** (0–1), a **confidence** (0–1), a time window
+in blocks and the evidence in plain words.
+
+To stop the profile flipping on noise, every event has **hysteresis**: an *enter* threshold, a lower *exit* threshold, a *persistence* count (it must hold for
+several blocks to switch on) and a *hold* time (it stays on briefly after clearing). The thresholds are in `server/policy/policy.config.json`.
+
+### 4. Ranking the objectives, including combined events
+
+There are seven objectives: **Security, Reliability, Reserve, Imbalance (DSM exposure), Cost, Renewable use, Battery use**. Each situation has its own preferred ranking
+(the *priority profile*), for example "evening ramp" ranks Cost above DSM exposure and "renewable surplus" ranks Renewable use above Cost.
+
+When several events are active together, the profiles are **blended into one ranking** (severity- and confidence-weighted rank aggregation):
+
+1. The normal-operations ranking always takes part with a small baseline weight (0.25).
+2. Each active event contributes its own profile as a ranked vote: an objective ranked first gets the most points, the last gets the fewest.
+3. The vote's weight is **event weight × severity × confidence**. A severe, well-evidenced event outweighs a faint one.
+4. Pairs of events that make each other worse (listed in the policy file, for example a unit failure during an evening ramp) get a **boost** multiplier.
+5. Points are added up and the objectives are sorted. Ties go to the profile of the most severe active event, then to the default order.
+6. **Security is always first**, whatever the vote says, because it is a hard physical limit.
+7. Events that last only part of the horizon only vote for the blocks they cover.
+
+The audit record keeps every event's severity, confidence, weight, boost and the final order, so any ranking can be traced.
+
+### 5. The optimiser (`opt/model.ts`, solved by HiGHS)
+
+The planner is a **mixed-integer linear programme** over the remaining blocks (up to 96): security-constrained unit commitment plus economic dispatch plus battery
+plus exchange trading.
+
+* **Decisions (per block):** solar and wind dispatch (curtailment allowed), thermal on/off (integer) and output, battery charge / discharge, day-ahead and
+  real-time buy and sell volumes, contract import, demand-response cut and load shift per customer, unserved energy.
+* **Hard constraints:** power balance every block; thermal minimum and maximum output, ramp limits, minimum up and down time, availability and
+  maintenance derates; battery power, energy, state-of-charge window and charging dynamics (with efficiency); import, export and **corridor** transfer limits;
+  already-committed exchange volumes; DAM / RTM gate times; demand-response limits per customer; critical customers are never cut.
+* **Reserve:** an up-reserve and a down-reserve requirement are sized from the demand and from the forecast uncertainty of the renewables
+  (larger in storm conditions) and must be held by committed, headroom-bearing units and the battery.
+* **Lexicographic stages.** Instead of one weighted cost with trade-off weights, the model solves one **objective group at a time** in the profile's order. It
+  minimises group 1, freezes its result plus a documented tolerance as a constraint, then minimises group 2 inside that, and so on. A higher-ranked objective
+  can therefore never be bought off by a lower-ranked one. A stage already at its bound (for example zero unserved energy) is skipped. A final tie-break stage
+  prefers smooth, stable dispatch so plans do not wobble between equivalent solutions.
+* **Time limits.** Two solver lanes (plan and background) run in worker threads with a 45 s watchdog. If the budget runs out, the best feasible plan is returned and
+  flagged **approximate**; it is never silently wrong.
+* **Independent verification** (`policy/verify.ts`): every result is re-checked by separate code against all the hard constraints. If demand cannot be served, the
+  result is an explicit **shortfall** with the unserved energy and the binding limits.
+* **Shadow prices.** After the stages, the final LP duals say what one more MWh of a limited resource is worth ("stored energy is worth ₹x against ₹y to store it").
+  These become the explanations in the Reasoning tab.
+
+### 6. From plan to actions (`policy/candidates.ts`, `evaluate.ts`)
+
+The plan is not applied blindly. The agent first lists what it **may** do (start or stop a unit, move the battery, buy, sell, draw contract power, cut load) and
+what is excluded and why. It then compares the new plan with the **committed schedule** and reports only the differences of 1 MW or more. Clusters of actions
+are judged over a 3-hour window against alternatives, with the ₹ difference shown ("not selected: ₹12k dearer").
+
+### 7. What really happens inside a block (`physics.ts`)
+
+Execution is separate from planning. It models what a control room can actually do **within** the 15 minutes:
+
+* The truth is applied: renewables and demand as they are, a tripped unit is lost **at once**, units follow their schedule.
+* If the block is short, the **shortage ladder** (next section) is used for physically possible responses only: no purchases or restarts mid-block.
+* A planned battery charge stops first when the block is short (it never charges on over-drawn grid power).
+* A tripped thermal unit stays down for its **restart time** (per unit) after the fault clears, then the next plan restarts it.
+* What is left over becomes a **deviation** from the schedule and is settled by the DSM rules; frequency moves 1 Hz per 10,000 MW of deviation around 50 Hz.
+* Costs are accounted per block: fuel, renewable tariffs, exchange, contract, demand response, start-up, fixed charges, battery wear and DSM.
+
+The rule of thumb: **physical facts and protection happen inside the block; economic re-dispatch happens from the next block.**
+
+### 8. Why the answers can be trusted
+
+* The optimiser is **deterministic** and its constraints are **re-verified** independently on every run.
+* Every action has a **reason**, a **cost comparison** with an alternative and the **constraint that was binding**.
+* Every decision is written to the **audit trail** (`data/audit.jsonl`, `GET /api/audit`).
+* Anything the app does not know is labelled (live / model / upload / config) rather than hidden.
+* Ask the Agent (Claude) only **explains**; it never makes or changes a dispatch decision. See [Ask the Agent](#ask-the-agent).
 
 ---
 
@@ -304,6 +396,21 @@ server/   index.ts · engine.ts · physics.ts · twin.ts · agent.ts · planning
 client/   src/pages (Dashboard, Planning, Performance, Portfolio, Maintenance, DataSources, Settings) · src/components · api.ts
 scripts/  test-update.mjs
 ```
+
+### How the pieces fit at run time
+
+* **One process holds the state.** `engine.ts` owns the 96-block day: the rows (plan, actual, cost per block), commitments, events, maintenance, settings and
+  the persistence ratios. The browser never computes anything; it renders snapshots.
+* **Two kinds of updates reach the browser.** A full *state* snapshot is pushed over Server-Sent Events whenever a block executes or a plan lands.
+  *Telemetry* (demand, generation, frequency, over-drawal) is pushed every second from a smoothed copy of the current block so the cards move continuously.
+* **Optimisation is off the main thread.** `optimizer.ts` hands each model to a worker (`worker.ts`) that loads HiGHS as WebAssembly. The main thread keeps
+  serving requests and the clock while a solve runs; a watchdog replaces a stuck worker.
+* **Data connectors fail soft.** `data/weather.ts` and `data/national.ts` cache what they fetch (`data/cache/`), retry, and report an error reason. The Data
+  Sources page shows each feed as live, model, upload or config, so a failed feed never looks like a real one.
+* **Persistence.** State is written to `data/state.json` and every decision to `data/audit.jsonl`. Without a volume on a host, a redeploy starts a fresh day.
+* **Agent, policy and optimiser are separate layers.** `policy/` decides *what matters now* (situation, profile, permitted actions, tolerances),
+  `opt/` decides *the best schedule under that priority*, `physics.ts` decides *what actually happens*, and `agent.ts` / `llm.ts` decide *how it is explained*.
+  This is why the priority order can be edited in a JSON file without touching the optimiser.
 
 Tech: Node 24 / TypeScript (run with `tsx`), Express 5, HiGHS (WebAssembly) for the LP / MILP, React 19, Vite, Recharts, Leaflet, `node:test`.
 

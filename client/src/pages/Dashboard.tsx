@@ -64,10 +64,12 @@ function KpiRibbon({ s, tel, cur }: { s: any; tel: any; cur: any }) {
         {(() => {
           // the big number is the demand; beside it the gap: deficit (red) = demand - own gen - grid - buy + sell when positive, surplus (green) when negative
           const asked = t.requested ?? t.demand;
-          const gap = asked - t.generation - t.grid - t.buy + t.sell;
+          // grid power drawn beyond the schedule is still supplied (it shows in red on Grid and as Δsched), so it is not a deficit
+          const overDraw = Math.max(0, t.demand + Math.max(0, -t.bessNet) - (t.generation + t.grid + t.buy - t.sell));
+          const gap = asked - t.generation - t.grid - overDraw - t.buy + t.sell;
           const state = gap > 5 ? 'deficit' : gap < -5 ? 'surplus' : 'balanced';
           const color = state === 'deficit' ? '#ff9a97' : state === 'surplus' ? '#7be3b6' : '#9fb0c9';
-          const tip = `Demand ${n0(asked)} MW less own generation ${n0(t.generation)}, grid ${n0(t.grid)} and purchases ${n0(t.buy)}, plus sales ${n0(t.sell)} = ${n0(gap)} MW`;
+          const tip = `Demand ${n0(asked)} MW less own generation ${n0(t.generation)}, grid ${n0(t.grid + overDraw)} (incl. over-drawal) and purchases ${n0(t.buy)}, plus sales ${n0(t.sell)} = ${n0(gap)} MW`;
           return <div className="val num" title={tip} style={{ whiteSpace: 'nowrap' }}>{n0(asked)}<small style={{ color: '#71829f' }}>MW</small><span style={{ color, fontSize: 13, fontWeight: 700, marginLeft: 10, letterSpacing: 0 }}>{state === 'balanced' ? 'balanced' : `${n0(Math.abs(gap))} ${state}`}</span></div>;
         })()}
         <div className="ft"><span title="Solar, wind, thermal and battery discharge">Own gen <b className="num" style={{ color: '#e8eef8' }}>{n0(t.generation)}</b></span></div>
